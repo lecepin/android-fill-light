@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>补光助手</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: #f5f5f5;
+        min-height: 100vh;
+      }
+
+      .container {
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+        transition: opacity 0.3s;
+      }
+
+      .container.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        margin: 30px 0;
+        font-size: 28px;
+        font-weight: 600;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        position: relative;
+      }
+
+      h1::after {
+        content: "";
+        display: block;
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(90deg, #ffd6aa, #f0f8ff);
+        margin: 10px auto 0;
+        border-radius: 2px;
+      }
+
+      .color-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+      }
+
+      .color-button {
+        border: none;
+        padding: 20px;
+        border-radius: 12px;
+        font-size: 16px;
+        color: white;
+        cursor: pointer;
+        transition: transform 0.2s;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+
+      .color-button:active {
+        transform: scale(0.98);
+      }
+
+      .color-button span {
+        position: relative;
+        z-index: 1;
+        color: #444;
+        font-weight: 500;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        font-size: 16px;
+        letter-spacing: 1px;
+      }
+
+      .color-button[data-color="#FFFFFF"] span {
+        color: #555;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+      }
+
+      .color-button[data-color="#FFD6AA"] span {
+        color: #8b5e3c;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+      }
+
+      .color-button[data-color="#F0F8FF"] span {
+        color: #4a6b8c;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+      }
+
+      .color-button[data-color="#FFE4E1"] span {
+        color: #9c6b67;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+      }
+
+      .fullscreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: none;
+        z-index: 1000;
+      }
+
+      .back-button {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        padding: 12px 24px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 25px;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+
+      .back-button::before {
+        content: "←";
+        font-size: 18px;
+      }
+
+      .back-button:hover {
+        background: rgba(0, 0, 0, 0.3);
+        transform: translateY(-1px);
+      }
+
+      .back-button:active {
+        transform: translateY(1px);
+      }
+
+      .recent-colors {
+        display: none;
+        margin: 20px 0;
+        padding: 15px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .recent-colors h2 {
+        font-size: 18px;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .recent-colors-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+
+      .recent-color-item {
+        aspect-ratio: 1;
+        border-radius: 8px;
+        position: relative;
+        cursor: pointer;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+
+      .recent-color-item .delete-btn {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #ddd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        color: #666;
+        font-size: 14px;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+
+      .color-picker-section {
+        margin: 20px 0;
+        padding: 15px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .color-picker-section h2 {
+        font-size: 18px;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      #colorPicker {
+        width: 100%;
+        height: 40px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .recent-colors-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .clear-all-btn {
+        padding: 6px 12px;
+        font-size: 14px;
+        color: #666;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.2s;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+
+      .clear-all-btn:hover {
+        background: #eee;
+      }
+
+      .clear-all-btn:active {
+        transform: scale(0.98);
+      }
+
+      .controls-container {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        max-width: 300px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 15px 20px;
+        border-radius: 20px;
+        backdrop-filter: blur(8px);
+        display: none; /* 默认隐藏 */
+        flex-direction: column;
+        gap: 12px; /* 减小间距 */
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .brightness-control {
+        display: flex;
+        align-items: center;
+        gap: 10px; /* 减小间距 */
+      }
+
+      .brightness-icon {
+        color: white;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        font-size: 18px;
+      }
+
+      .brightness-slider {
+        flex: 1;
+        -webkit-appearance: none;
+        height: 3px; /* 减小滑块高度 */
+        border-radius: 1.5px;
+        background: rgba(255, 255, 255, 0.3);
+        outline: none;
+      }
+
+      .brightness-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px; /* 减小滑块大小 */
+        height: 16px;
+        border-radius: 50%;
+        background: white;
+        cursor: pointer;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .brightness-slider::-webkit-slider-thumb:active {
+        transform: scale(1.1);
+      }
+
+      .brightness-value {
+        color: white;
+        min-width: 40px;
+        text-align: right;
+        font-size: 14px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+
+      .wake-lock-section {
+        margin: 20px 0;
+        padding: 15px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .wake-lock-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+
+      .wake-lock-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #444;
+        font-size: 15px;
+      }
+
+      .switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 24px;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      input:checked + .slider {
+        background-color: #4caf50;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(20px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>补光助手</h1>
+
+      <div class="color-grid">
+        <button
+          class="color-button"
+          style="background: #ffd6aa"
+          data-color="#FFD6AA"
+        >
+          <span>暖色光</span>
+        </button>
+        <button
+          class="color-button"
+          style="background: #f0f8ff"
+          data-color="#F0F8FF"
+        >
+          <span>冷色光</span>
+        </button>
+        <button
+          class="color-button"
+          style="background: #ffffff"
+          data-color="#FFFFFF"
+        >
+          <span>自然光</span>
+        </button>
+        <button
+          class="color-button"
+          style="background: #ffe4e1"
+          data-color="#FFE4E1"
+        >
+          <span>柔光</span>
+        </button>
+      </div>
+
+      <div class="wake-lock-section">
+        <label class="wake-lock-toggle">
+          <span class="wake-lock-label">
+            <span>🔆</span>
+            <span>保持屏幕常亮</span>
+          </span>
+          <label class="switch">
+            <input type="checkbox" id="wakeLockToggle" />
+            <span class="slider"></span>
+          </label>
+        </label>
+      </div>
+
+      <div class="recent-colors">
+        <div class="recent-colors-header">
+          <h2>最近使用</h2>
+          <button class="clear-all-btn">清除全部</button>
+        </div>
+        <div class="recent-colors-grid" id="recentColors"></div>
+      </div>
+
+      <div class="color-picker-section">
+        <h2>自定义颜色</h2>
+        <input type="color" id="colorPicker" value="#ffffff" />
+      </div>
+    </div>
+
+    <div class="fullscreen">
+      <button class="back-button">返回</button>
+      <div class="controls-container">
+        <div class="brightness-control">
+          <span class="brightness-icon">☀️</span>
+          <input
+            type="range"
+            class="brightness-slider"
+            min="0"
+            max="255"
+            value="255"
+          />
+          <span class="brightness-value"></span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const colorButtons = document.querySelectorAll(".color-button");
+      const fullscreen = document.querySelector(".fullscreen");
+      const backButton = document.querySelector(".back-button");
+      const container = document.querySelector(".container");
+
+      // 处理最近使用的颜色
+      const MAX_RECENT_COLORS = 8;
+      let recentColors = JSON.parse(
+        localStorage.getItem("recentColors") || "[]"
+      );
+      const recentColorsContainer = document.getElementById("recentColors");
+      const colorPicker = document.getElementById("colorPicker");
+
+      function addRecentColor(color) {
+        recentColors = recentColors.filter((c) => c !== color);
+        recentColors.unshift(color);
+        if (recentColors.length > MAX_RECENT_COLORS) {
+          recentColors.pop();
+        }
+        localStorage.setItem("recentColors", JSON.stringify(recentColors));
+        updateRecentColorsUI();
+      }
+
+      function updateRecentColorsUI() {
+        const recentColorsSection = document.querySelector(".recent-colors");
+
+        if (recentColors.length === 0) {
+          recentColorsSection.style.display = "none";
+          return;
+        }
+
+        recentColorsSection.style.display = "block";
+        recentColorsContainer.innerHTML = "";
+
+        recentColors.forEach((color) => {
+          const item = document.createElement("div");
+          item.className = "recent-color-item";
+          item.style.backgroundColor = color;
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete-btn";
+          deleteBtn.innerHTML = "×";
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            recentColors = recentColors.filter((c) => c !== color);
+            localStorage.setItem("recentColors", JSON.stringify(recentColors));
+            updateRecentColorsUI();
+          };
+
+          item.onclick = () => {
+            showFullscreen(color);
+          };
+
+          item.appendChild(deleteBtn);
+          recentColorsContainer.appendChild(item);
+        });
+      }
+
+      const wakeLockToggle = document.getElementById("wakeLockToggle");
+
+      // 替换原有的 wakeLock 相关代码
+      wakeLockToggle.addEventListener("change", async (e) => {
+        const isChecked = e.target.checked;
+        try {
+          if (window.Android) {
+            window.Android.setKeepScreenOn(isChecked);
+          }
+        } catch (err) {
+          console.error("设置屏幕常亮失败:", err);
+          wakeLockToggle.checked = !isChecked; // 如果失败，恢复开关状态
+        }
+      });
+
+      // 初始化开关状态
+      document.addEventListener("DOMContentLoaded", () => {
+        if (window.Android) {
+          wakeLockToggle.checked = window.Android.isKeepScreenOn();
+        }
+      });
+
+      // 修改双击事件处理
+      let lastTap = 0;
+      fullscreen.addEventListener("click", (e) => {
+        // 如果点击的是开关或其父元素，不处理双击事件
+        if (e.target.closest(".wake-lock-toggle")) {
+          return;
+        }
+
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 300 && tapLength > 0) {
+          const controls = document.querySelector(".controls-container");
+          controls.style.display =
+            controls.style.display === "none" ? "flex" : "none";
+        }
+        lastTap = currentTime;
+      });
+
+      // 防止控制面板的点击事件冒泡
+      document
+        .querySelector(".controls-container")
+        .addEventListener("click", (e) => {
+          e.stopPropagation();
+        });
+
+      // 更新显示/隐藏控件的函数
+      async function showFullscreen(color) {
+        fullscreen.style.background = color;
+        fullscreen.style.display = "block";
+        container.classList.add("hidden");
+        document.querySelector(".controls-container").style.display = "flex";
+        history.pushState({ color }, "", `#${color.substring(1)}`);
+
+        initBrightness();
+      }
+
+      function hideFullscreen() {
+        fullscreen.style.display = "none";
+        container.classList.remove("hidden");
+        document.querySelector(".controls-container").style.display = "none";
+      }
+
+      // 更新所有使用全屏的地方
+      colorButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const color = button.dataset.color;
+          showFullscreen(color);
+          addRecentColor(color);
+        });
+      });
+
+      colorPicker.addEventListener("change", (e) => {
+        const color = e.target.value;
+        showFullscreen(color);
+        addRecentColor(color);
+      });
+
+      recentColorsContainer.addEventListener("click", (e) => {
+        const item = e.target.closest(".recent-color-item");
+        if (item) {
+          const color = item.style.backgroundColor;
+          showFullscreen(color);
+        }
+      });
+
+      backButton.addEventListener("click", () => {
+        hideFullscreen();
+        restoreBrightness();
+        history.back();
+      });
+
+      window.addEventListener("popstate", () => {
+        hideFullscreen();
+        restoreBrightness();
+      });
+
+      // 保持屏幕亮
+      function keepScreenOn() {
+        if (navigator.wakeLock) {
+          navigator.wakeLock.request("screen").catch((err) => console.log(err));
+        }
+      }
+
+      document.addEventListener("click", keepScreenOn);
+
+      // 添加清除全部功能
+      const clearAllBtn = document.querySelector(".clear-all-btn");
+      clearAllBtn.addEventListener("click", () => {
+        recentColors = [];
+        localStorage.setItem("recentColors", JSON.stringify(recentColors));
+        updateRecentColorsUI();
+      });
+
+      const brightnessSlider = document.querySelector(".brightness-slider");
+      const brightnessValue = document.querySelector(".brightness-value");
+      let isUserAdjusting = false; // 添加标记，用于判断是否用户正在调节
+
+      // 确保亮度滑块的最大值为100
+      brightnessSlider.setAttribute("max", "255");
+      brightnessSlider.setAttribute("min", "0");
+      brightnessSlider.setAttribute("value", "255");
+
+      // 添加防抖函数
+      function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+      }
+
+      // 将亮度设置函数包装成防抖版本
+      const debouncedSetBrightness = debounce(async (value) => {
+        setScreenBrightness(value);
+      }, 500);
+
+      // 修改亮度滑块事件监听器
+      brightnessSlider.addEventListener("input", (e) => {
+        const value = parseInt(e.target.value);
+        brightnessValue.textContent = `${~~((value * 100) / 255)}%`;
+        debouncedSetBrightness(value);
+      });
+
+      let originalBrightness = 255; // 存储原始亮度值
+
+      // 初始化亮度值
+      function initBrightness() {
+        if (window.Android) {
+          // 保存当前亮度值
+          originalBrightness = window.Android.getScreenBrightness();
+          // 关闭自动亮度
+          window.Android.setAutoBrightness(false);
+        }
+        
+        // 设置滑块和显示值为当前系统亮度
+        brightnessSlider.value = originalBrightness;
+        brightnessValue.textContent = `${~~((originalBrightness * 100) / 255)}%`;
+      }
+
+      // 恢复原始亮度
+      function restoreBrightness() {
+        if (window.Android) {
+          window.Android.setAutoBrightness(true); // 恢复自动亮度
+          setScreenBrightness(originalBrightness); // 恢复原始亮度值
+        }
+      }
+
+      function setScreenBrightness(brightness) {
+        try {
+          if (window.Android) {
+            window.Android.setScreenBrightness(brightness);
+            return true;
+          }
+        } catch (e) {
+          console.error("设置亮度失败:", e);
+        }
+        return false;
+      }
+
+      function getScreenBrightness() {
+        try {
+          if (window.Android) {
+            return window.Android.getScreenBrightness();
+          }
+        } catch (e) {
+          console.error("获取亮度失败:", e);
+        }
+        return -1;
+      }
+    </script>
+  </body>
+</html>
