@@ -25,4 +25,4 @@ jobs:
       run: ./gradlew build
 
     - name: Builds
-      run: ls -l app/build/outputs/apk/debug && . ./upload-build
+      run: ls -l app/build/outputs/apk/debug && . ./upload-build && ls -l app/build/outputs/apk/debug 
