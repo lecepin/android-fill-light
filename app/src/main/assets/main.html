@@ -531,7 +531,9 @@
         const isChecked = e.target.checked;
         try {
           if (window.Android) {
-            window.Android.setKeepScreenOn(isChecked);
+            if (!window.Android.setKeepScreenOn(isChecked)) {
+              wakeLockToggle.checked = !isChecked;
+            }
           }
         } catch (err) {
           console.error("设置屏幕常亮失败:", err);
@@ -573,13 +575,15 @@
 
       // 更新显示/隐藏控件的函数
       async function showFullscreen(color) {
+        if (!initBrightness()) {
+          return;
+        }
+
         fullscreen.style.background = color;
         fullscreen.style.display = "block";
         container.classList.add("hidden");
         document.querySelector(".controls-container").style.display = "flex";
         history.pushState({ color }, "", `#${color.substring(1)}`);
-
-        initBrightness();
       }
 
       function hideFullscreen() {
@@ -643,7 +647,7 @@
       const brightnessValue = document.querySelector(".brightness-value");
       let isUserAdjusting = false; // 添加标记，用于判断是否用户正在调节
 
-      // 确保亮度滑块的最大值为100
+      // 确保亮度滑块的最大值为255
       brightnessSlider.setAttribute("max", "255");
       brightnessSlider.setAttribute("min", "0");
       brightnessSlider.setAttribute("value", "255");
@@ -679,10 +683,17 @@
           // 关闭自动亮度
           window.Android.setAutoBrightness(false);
         }
-        
-        // 设置滑块和显示值为当前系统亮度
-        brightnessSlider.value = originalBrightness;
-        brightnessValue.textContent = `${~~((originalBrightness * 100) / 255)}%`;
+
+        // 设置滑块和显示值为255亮度
+        if (window.Android.setScreenBrightness(255)) {
+          // UI反馈，比如恢复滑块位置
+          brightnessSlider.value = originalBrightness;
+          brightnessValue.textContent = `100%`;
+
+          return true;
+        }
+
+        return false;
       }
 
       // 恢复原始亮度
@@ -715,6 +726,43 @@
         }
         return -1;
       }
+
+      // 设置亮度示例
+      const setBrightness = async (value) => {
+        if (window.Android) {
+          const success = window.Android.setScreenBrightness(value);
+          if (!success) {
+            // UI反馈，比如恢复滑块位置
+            brightnessSlider.value = originalBrightness;
+            brightnessValue.textContent = `${~~(
+              (originalBrightness * 100) /
+              255
+            )}%`;
+          }
+        }
+      };
+
+      // 设置自动亮度示例
+      const setAutoMode = async (enabled) => {
+        if (window.Android) {
+          const success = window.Android.setAutoBrightness(enabled);
+          if (!success) {
+            // UI反馈，比如恢复开关状态
+            autoSwitch.checked = !enabled;
+          }
+        }
+      };
+
+      // 设置屏幕常亮示例
+      const setScreenOn = async (enabled) => {
+        if (window.Android) {
+          const success = window.Android.setKeepScreenOn(enabled);
+          if (!success) {
+            // UI反馈，比如恢复开关状态
+            screenOnSwitch.checked = !enabled;
+          }
+        }
+      };
     </script>
   </body>
 </html>

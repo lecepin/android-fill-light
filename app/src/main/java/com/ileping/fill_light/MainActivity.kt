@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -19,6 +20,19 @@ class MainActivity : AppCompatActivity() {
     private var _exitTime = 0L
 
     inner class WebAppInterface(private val activity: Activity) {
+        private fun showToast(message: String) {
+            activity.runOnUiThread { Toast.makeText(activity, message, Toast.LENGTH_SHORT).show() }
+        }
+
+        private fun checkAndRequestPermission(): Boolean {
+            if (!Settings.System.canWrite(activity)) {
+                showToast("需要授权才能调节亮度")
+                requestBrightnessPermission()
+                return false
+            }
+            return true
+        }
+
         @android.webkit.JavascriptInterface
         fun checkBrightnessPermission(): Boolean {
             return Settings.System.canWrite(activity)
@@ -26,66 +40,76 @@ class MainActivity : AppCompatActivity() {
 
         @android.webkit.JavascriptInterface
         fun requestBrightnessPermission() {
-            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
-            intent.data = Uri.parse("package:" + activity.packageName)
-            activity.startActivity(intent)
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.data = Uri.parse("package:" + activity.packageName)
+                activity.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e("MainActivity", "请求权限失败: ${e.message}")
+                showToast("打开设置页面失败，请手动授权")
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun setScreenBrightness(brightness: Int): Boolean {
+            if (!checkAndRequestPermission()) {
+                return false
+            }
+
+            return try {
+                val validBrightness = brightness.coerceIn(0, 255)
+                Settings.System.putInt(
+                        activity.contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS,
+                        validBrightness
+                )
+                activity.runOnUiThread {
+                    activity.window.attributes =
+                            activity.window.attributes.apply {
+                                screenBrightness = validBrightness / 255f
+                            }
+                }
+                true
+            } catch (e: Exception) {
+                Log.e("MainActivity", "设置亮度失败: ${e.message}")
+                showToast("设置亮度失败")
+                false
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun setAutoBrightness(enabled: Boolean): Boolean {
+            if (!checkAndRequestPermission()) {
+                return false
+            }
+
+            return try {
+                Settings.System.putInt(
+                        activity.contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS_MODE,
+                        if (enabled) Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
+                        else Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+                )
+                true
+            } catch (e: Exception) {
+                Log.e("MainActivity", "设置自动亮度失败: ${e.message}")
+                showToast("设置自动亮度失败")
+                false
+            }
         }
 
         @android.webkit.JavascriptInterface
         fun getScreenBrightness(): Int {
             try {
-                val systemBrightness = Settings.System.getInt(
-                    activity.contentResolver,
-                    Settings.System.SCREEN_BRIGHTNESS
+                return Settings.System.getInt(
+                        activity.contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS
                 )
-                return systemBrightness
             } catch (e: Exception) {
                 Log.e("MainActivity", "获取亮度失败: ${e.message}")
                 e.printStackTrace()
             }
             return -1
-        }
-
-        @android.webkit.JavascriptInterface
-        fun setScreenBrightness(brightness: Int) {
-            try {
-                if (Settings.System.canWrite(activity)) {
-                    val validBrightness = brightness.coerceIn(0, 255)
-
-                    Settings.System.putInt(
-                            activity.contentResolver,
-                            Settings.System.SCREEN_BRIGHTNESS,
-                            validBrightness
-                    )
-
-                    activity.runOnUiThread {
-                        activity.window.attributes =
-                                activity.window.attributes.apply {
-                                    screenBrightness = validBrightness / 255f
-                                }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "设置亮度失败: ${e.message}")
-                e.printStackTrace()
-            }
-        }
-
-        @android.webkit.JavascriptInterface
-        fun setAutoBrightness(enabled: Boolean) {
-            try {
-                if (Settings.System.canWrite(activity)) {
-                    Settings.System.putInt(
-                            activity.contentResolver,
-                            Settings.System.SCREEN_BRIGHTNESS_MODE,
-                            if (enabled) Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
-                            else Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "设置自动亮度失败: ${e.message}")
-                e.printStackTrace()
-            }
         }
 
         @android.webkit.JavascriptInterface
@@ -102,38 +126,33 @@ class MainActivity : AppCompatActivity() {
         }
 
         @android.webkit.JavascriptInterface
-        fun setKeepScreenOn(enabled: Boolean) {
-            activity.runOnUiThread {
-                if (enabled) {
-                    activity.window.addFlags(
-                            android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                    )
-                } else {
-                    activity.window.clearFlags(
-                            android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                    )
+        fun setKeepScreenOn(enabled: Boolean): Boolean {
+            return try {
+                activity.runOnUiThread {
+                    if (enabled) {
+                        activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
                 }
+                true
+            } catch (e: Exception) {
+                Log.e("MainActivity", "设置屏幕常亮失败: ${e.message}")
+                showToast("设置屏幕常亮失败")
+                false
             }
         }
 
         @android.webkit.JavascriptInterface
         fun isKeepScreenOn(): Boolean {
             return (activity.window.attributes.flags and
-                    android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        // 检查是否有修改系统设置的权限
-        if (!Settings.System.canWrite(this)) {
-            Toast.makeText(this, "需要授权才能调节亮度", Toast.LENGTH_LONG).show()
-            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
-            intent.data = Uri.parse("package:$packageName")
-            startActivity(intent)
-        }
 
         webView =
                 WebView(this).apply {
