@@ -563,36 +563,39 @@
         const recentColorsSection = document.querySelector(".recent-colors");
 
         if (recentColors.length === 0) {
-          recentColorsSection.style.display = "none";
-          return;
+            recentColorsSection.style.display = "none";
+            return;
         }
 
         recentColorsSection.style.display = "block";
         recentColorsContainer.innerHTML = "";
 
         recentColors.forEach((color) => {
-          const item = document.createElement("div");
-          item.className = "recent-color-item";
-          item.style.backgroundColor = color;
+            const item = document.createElement("div");
+            item.className = "recent-color-item";
+            item.style.backgroundColor = color;
 
-          const deleteBtn = document.createElement("button");
-          deleteBtn.className = "delete-btn";
-          deleteBtn.innerHTML = "×";
-          deleteBtn.onclick = (e) => {
-            e.stopPropagation();
-            recentColors = recentColors.filter((c) => c !== color);
-            localStorage.setItem("recentColors", JSON.stringify(recentColors));
-            updateRecentColorsUI();
-          };
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "delete-btn";
+            deleteBtn.innerHTML = "×";
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                recentColors = recentColors.filter((c) => c !== color);
+                localStorage.setItem("recentColors", JSON.stringify(recentColors));
+                updateRecentColorsUI();
+            };
 
-          item.onclick = () => {
-            showFullscreen(color);
-          };
+            item.onclick = () => {
+                showFullscreen(color);
+            };
 
-          item.appendChild(deleteBtn);
-          recentColorsContainer.appendChild(item);
+            item.appendChild(deleteBtn);
+            recentColorsContainer.appendChild(item);
         });
-      }
+    }
+
+    // 初始化时调用一次
+    updateRecentColorsUI();
 
       const wakeLockToggle = document.getElementById("wakeLockToggle");
 
